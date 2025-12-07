@@ -1,0 +1,11 @@
+import { pool } from "../../database/db";
+
+const getAllUser = async () => {
+  const result = await pool.query(`SELECT * FROM users`);
+  delete result?.rows[0].password;
+  return result;
+};
+
+export const userServices = {
+  getAllUser,
+};

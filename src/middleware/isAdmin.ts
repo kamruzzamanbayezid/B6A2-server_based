@@ -2,7 +2,7 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { NextFunction, Request, Response } from "express";
 import { config } from "../config";
 
-export const auth = (...roles: string[]) => {
+const isAdmin = (...roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization?.split(" ")[1];
 
@@ -26,8 +26,9 @@ export const auth = (...roles: string[]) => {
         message: "Forbidden access!",
       });
     }
-    
+
     next();
   };
 };
 
+export default isAdmin;

@@ -1,9 +1,16 @@
 import { Router } from "express";
 import { userControllers } from "./user.controllers";
-import { auth } from "../../middleware/auth";
+import isAdmin from "../../middleware/isAdmin";
+import isAdminOrOwn from "../../middleware/isAdminOrOwn";
 
 const router = Router();
 
-router.get("/", auth("admin","customer"), userControllers.getAllUser);
+router.get("/", isAdmin("admin"), userControllers.getAllUser);
+router.put(
+  "/:userId",
+  isAdmin(),
+  isAdminOrOwn(),
+  userControllers.updateUserById
+);
 
 export const userRoutes = router;

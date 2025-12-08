@@ -1,3 +1,4 @@
+import { Request } from "express";
 import { pool } from "../../database/db";
 
 const createBooking = async (booking: Record<string, unknown>) => {
@@ -89,7 +90,51 @@ const getAllBookings = async (user: Record<string, unknown>) => {
   return result;
 };
 
-const updateBookingById = async () => {};
+const updateBookingById = async (req: Request) => {
+  const bookingId = req.params?.bookingId;
+  const { status } = req.body;
+  const user = req?.user;
+
+  const hasBooking = await pool.query(`SELECT * FROM bookings WHERE id=$1`, [
+    bookingId,
+  ]);
+
+  if (hasBooking?.rows?.length === 0) {
+    const err = new Error("Booking is not found!!") as any;
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const booking = hasBooking.rows[0];
+
+  if (user?.role === "customer") {
+    if (status !== "cancelled") {
+      const err = new Error("Customers can only cancel bookings") as any;
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (booking?.customer_id !== user?.id) {
+      const err = new Error("Unauthorized Access") as any;
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const currentDate = new Date();
+    const startDate = new Date(booking?.rent_start_date);
+
+    if (currentDate > startDate) {
+      const err = new Error("You can only cancel before start date") as any;
+      err.statusCode = 400;
+      throw err;
+    }
+
+    
+
+    console.log(currentDate.getTime());
+    console.log(startDate.getTime());
+  }
+};
 
 export const bookingServices = {
   createBooking,

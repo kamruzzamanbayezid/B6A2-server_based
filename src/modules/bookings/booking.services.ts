@@ -25,21 +25,9 @@ const createBooking = async (booking: Record<string, unknown>) => {
     throw err;
   }
 
-  const overlapping = await pool.query(
-    `
-      SELECT * 
-      FROM bookings
-      WHERE vehicle_id = $1
-        AND NOT (
-            rent_end_date < $2 OR 
-            rent_start_date > $3
-        );
-    `,
-    [vehicle_id, rent_start_date, rent_end_date]
-  );
-
-  if (overlapping.rows.length > 0) {
-    const err: any = new Error("Vehicle is already booked for these dates!");
+  const availability_status = vehicle?.rows[0].availability_status;
+  if (availability_status !== "available") {
+    const err: any = new Error("Vehicle is already booked!");
     err.statusCode = 400;
     throw err;
   }
@@ -122,12 +110,6 @@ const updateBookingById = async (req: Request) => {
       throw err;
     }
 
-    if (booking.status !== "active") {
-      const err: any = new Error("Only active bookings can be returned");
-      err.statusCode = 400;
-      throw err;
-    }
-
     const updatedBooking = await pool.query(
       `UPDATE bookings SET status='returned' WHERE id=$1 RETURNING *`,
       [bookingId]
@@ -147,6 +129,8 @@ const updateBookingById = async (req: Request) => {
       err.statusCode = 400;
       throw err;
     }
+    console.log(booking?.customer_id);
+    console.log(user?.id);
 
     if (booking?.customer_id !== user?.id) {
       const err = new Error("Unauthorized Access") as any;
@@ -158,7 +142,6 @@ const updateBookingById = async (req: Request) => {
     const startDate = new Date(booking.rent_start_date);
     currentDate.setHours(0, 0, 0, 0);
     startDate.setHours(0, 0, 0, 0);
-    console.log("Curr", currentDate);
 
     if (currentDate >= startDate) {
       const err = new Error(

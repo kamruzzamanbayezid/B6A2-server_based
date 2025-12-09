@@ -6,6 +6,10 @@ import { vehicleRoutes } from "./modules/vehicles/vehicle.routes";
 import { authRoutes } from "./modules/auth/auth.routes";
 import { userRoutes } from "./modules/users/user.routes";
 import { bookingRoutes } from "./modules/bookings/booking.routes";
+import {
+  autoReturnExpiredBookings,
+  startBookingScheduler,
+} from "./scheduler/bookingScheduler";
 
 export const app = express();
 
@@ -25,6 +29,9 @@ app.use("/api/v1/users", userRoutes);
 
 // booking routes
 app.use("/api/v1/bookings", bookingRoutes);
+
+// autoReturnExpiredBookings();
+startBookingScheduler();
 
 app.get("/", (req: Request, res: Response) => {
   res.send("Hello From B6A1 of Programming Hero L2");

@@ -48,22 +48,35 @@ const deleteUserById = async (id: string) => {
     id,
   ]);
 
-  const isUserExist = checkExisting.rows[0];
+  const user = checkExisting.rows[0];
 
-  if (!isUserExist) {
+  if (!user) {
     const err = new Error("User is not found!!") as any;
     err.statusCode = 400;
     throw err;
   }
 
-  
+  const isActiveBooking = await pool.query(
+    `SELECT * FROM bookings WHERE customer_id = $1 AND status = 'active'`,
+    [id]
+  );
 
-  const result = await pool.query(`DELETE FROM vehicles WHERE id=$1`, [id]);
+  const isActiveCount = isActiveBooking?.rowCount ?? 0;
+
+  if (isActiveCount > 0) {
+    const err = new Error(
+      "Can not delete user. This user has active booking"
+    ) as any;
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const result = await pool.query(`DELETE FROM users WHERE id=$1`, [id]);
   return result;
 };
-
 
 export const userServices = {
   getAllUser,
   updateUserById,
+  deleteUserById,
 };

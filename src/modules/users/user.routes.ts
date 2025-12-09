@@ -13,4 +13,6 @@ router.put(
   userControllers.updateUserById
 );
 
+router.delete("/:userId", isAdmin("admin"), userControllers.deleteUserById);
+
 export const userRoutes = router;

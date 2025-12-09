@@ -36,7 +36,7 @@ In this application Admins can manage vehicles, users, and bookings, while custo
 
 ---
 
-## 🛠 Technology Stack
+## Technology Stack
 
 - **Backend:** Node.js, Express, TypeScript  
 - **Database:** PostgreSQL  
@@ -47,7 +47,7 @@ In this application Admins can manage vehicles, users, and bookings, while custo
 
 ---
 
-## 🚀 Setup & Usage
+## Setup & Usage
 
 ### 1. Clone the repository
 ```bash

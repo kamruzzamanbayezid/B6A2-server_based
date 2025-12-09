@@ -24,12 +24,17 @@ const createBooking = async (req: Request, res: Response) => {
 };
 
 const getAllBookings = async (req: Request, res: Response) => {
+  const user = req?.user;
   try {
-    const result = await bookingServices.getAllBookings(req?.user);
+    const result = await bookingServices.getAllBookings(req);
 
     return res.status(201).json({
       success: true,
-      message: "Bookings retrieved successfully",
+      message: `${
+        user?.role === "admin"
+          ? "Bookings retrieved successfully"
+          : "Your bookings retrieved successfully"
+      }`,
       data: result.rows,
     });
   } catch (error: any) {
@@ -41,12 +46,17 @@ const getAllBookings = async (req: Request, res: Response) => {
 };
 
 const updateBookingById = async (req: Request, res: Response) => {
+  const role = req?.user?.role;
   try {
     const result = await bookingServices.updateBookingById(req);
     res.status(200).json({
       success: true,
-      message: `Booking updated successfully`,
-      // data: result?.rows[0],
+      message: `${
+        role === "admin"
+          ? "Booking marked as returned. Vehicle is now available"
+          : "Booking cancelled successfully"
+      }`,
+      data: result?.rows[0],
     });
   } catch (error: any) {
     res.status(401).json({

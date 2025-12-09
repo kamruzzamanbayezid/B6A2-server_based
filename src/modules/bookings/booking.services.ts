@@ -25,14 +25,6 @@ const createBooking = async (booking: Record<string, unknown>) => {
     throw err;
   }
 
-  const availability_status = vehicle.rows[0].availability_status;
-
-  if (availability_status !== "available") {
-    const err = new Error("Vehicle is not available for rent!!") as any;
-    err.statusCode = 400;
-    throw err;
-  }
-
   const overlapping = await pool.query(
     `
       SELECT * 
@@ -55,21 +47,26 @@ const createBooking = async (booking: Record<string, unknown>) => {
   const start = new Date(rent_start_date as string);
   const end = new Date(rent_end_date as string);
 
-  if (start >= end) {
+  if (start > end) {
     const err: any = new Error("Start date must be earlier than end date");
     err.statusCode = 400;
     throw err;
   }
 
-  const daily_rent_price = vehicle?.rows[0].daily_rent_price;
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
 
   const timeDiff = end.getTime() - start.getTime();
-  const days = timeDiff / (1000 * 60 * 60 * 24);
+
+  const dayInMs = 1000 * 60 * 60 * 24;
+  const days = timeDiff / dayInMs + 1;
+
+  const daily_rent_price = vehicle?.rows[0]?.daily_rent_price;
   const total_price = Number(daily_rent_price) * days;
 
   const result = await pool.query(
     `
-      INSERT INTO bookings 
+      INSERT INTO bookings
       (customer_id, vehicle_id, rent_start_date, rent_end_date, total_price, status)
       VALUES ($1, $2, $3, $4, $5, 'active')
       RETURNING *;
@@ -85,8 +82,19 @@ const createBooking = async (booking: Record<string, unknown>) => {
   return { result: result?.rows[0], vehicle: vehicle?.rows[0] };
 };
 
-const getAllBookings = async (user: Record<string, unknown>) => {
-  const result = await pool.query(`SELECT * FROM bookings`);
+const getAllBookings = async (req: Request) => {
+  const user = req?.user;
+
+  if (user?.role === "admin") {
+    const result = await pool.query(`SELECT * FROM bookings`);
+    return result;
+  }
+
+  const result = await pool.query(
+    `SELECT * FROM bookings WHERE customer_id=$1`,
+    [user?.id]
+  );
+
   return result;
 };
 
@@ -107,6 +115,32 @@ const updateBookingById = async (req: Request) => {
 
   const booking = hasBooking.rows[0];
 
+  if (user?.role === "admin") {
+    if (status !== "returned") {
+      const err = new Error("Admin can only return bookings") as any;
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (booking.status !== "active") {
+      const err: any = new Error("Only active bookings can be returned");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const updatedBooking = await pool.query(
+      `UPDATE bookings SET status='returned' WHERE id=$1 RETURNING *`,
+      [bookingId]
+    );
+
+    await pool.query(
+      `UPDATE vehicles SET availability_status='available' WHERE id=$1`,
+      [booking.vehicle_id]
+    );
+
+    return updatedBooking;
+  }
+
   if (user?.role === "customer") {
     if (status !== "cancelled") {
       const err = new Error("Customers can only cancel bookings") as any;
@@ -121,18 +155,30 @@ const updateBookingById = async (req: Request) => {
     }
 
     const currentDate = new Date();
-    const startDate = new Date(booking?.rent_start_date);
+    const startDate = new Date(booking.rent_start_date);
+    currentDate.setHours(0, 0, 0, 0);
+    startDate.setHours(0, 0, 0, 0);
+    console.log("Curr", currentDate);
 
-    if (currentDate > startDate) {
-      const err = new Error("You can only cancel before start date") as any;
+    if (currentDate >= startDate) {
+      const err = new Error(
+        "You can only cancel before the booking start date"
+      ) as any;
       err.statusCode = 400;
       throw err;
     }
 
-    
+    if (booking.status !== "active") {
+      const err: any = new Error("Only active bookings can be cancelled");
+      err.statusCode = 400;
+      throw err;
+    }
 
-    console.log(currentDate.getTime());
-    console.log(startDate.getTime());
+    const updatedBooking = await pool.query(
+      `UPDATE bookings SET status='cancelled' WHERE id=$1 RETURNING *`,
+      [bookingId]
+    );
+    return updatedBooking;
   }
 };
 
